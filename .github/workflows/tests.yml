@@ -14,5 +14,19 @@ jobs:
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --locked
-      - run: uv run --locked pytest
+      - run: uv sync --locked --extra agentcore
+      - run: uv run --locked --extra agentcore pytest
+      - run: uv run --locked --extra agentcore python scripts/package_agentcore.py
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.13.4"
+      - run: terraform -chdir=terraform fmt -check -recursive
+      - run: terraform -chdir=terraform init -backend=false -lockfile=readonly
+      - run: terraform -chdir=terraform validate
+      # AWS is mocked; plan-only tests cannot execute the ingestion provisioner.
+      - run: terraform -chdir=terraform test

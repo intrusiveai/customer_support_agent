@@ -1,0 +1,7 @@
+region   = "us-west-2"
+name     = "support-agent-test"
+model_id = "us.amazon.nova-lite-v1:0"
+
+# Disposable test environment: permits destruction of nonempty test buckets.
+# Leave false if you want cleanup to stop until their objects are removed.
+force_destroy = true

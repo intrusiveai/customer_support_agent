@@ -60,6 +60,34 @@ def money(minor: int, currency: str) -> str:
     return f"{Decimal(minor).scaleb(-digits):.{digits}f}"
 
 
+def validate_refund_input(amount, reason) -> dict | None:
+    if (not isinstance(amount, str) or len(amount) > 32 or
+            not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", amount)):
+        return result("INVALID_AMOUNT", "Use a positive decimal string, such as '10.00'.")
+    if not isinstance(reason, str) or not reason.strip() or len(reason) > 1000:
+        return result("INVALID_INPUT", "A reason of 1–1000 characters is required.")
+    return None
+
+
+def refund_amount(order, amount: str, config) -> tuple[int, dict | None]:
+    """Authoritative policy shared by the SQLite and DynamoDB transaction paths."""
+    if order["status"] not in config.refund_eligible_statuses:
+        return 0, result("INELIGIBLE_ORDER", "Order status is not eligible for a refund.")
+    digits = CURRENCY_DIGITS[order["currency"]]
+    try:
+        value = Decimal(amount)
+        if value <= 0 or -value.as_tuple().exponent > digits:
+            return 0, result("INVALID_AMOUNT", f"Amount must be positive with at most {digits} decimals.")
+        minor = int(value.scaleb(digits))
+    except (InvalidOperation, ValueError, OverflowError):
+        return 0, result("INVALID_AMOUNT", "Invalid decimal amount.")
+    if minor > config.refund_max_minor:
+        return 0, result("POLICY_LIMIT", "Amount exceeds the configured per-refund limit.")
+    if minor > order["total_minor"] - order["refunded_minor"]:
+        return 0, result("INSUFFICIENT_BALANCE", "Amount exceeds the remaining refundable balance.")
+    return minor, None
+
+
 @contextmanager
 def connect(path: str):
     db = sqlite3.connect(path, timeout=5)
@@ -161,33 +189,18 @@ class Store:
         return result(order=order)
 
     def issue_refund(self, order_id, amount, reason, session, invocation_id, config) -> dict:
-        # Strings avoid floating-point ambiguity and prohibit exponent/NaN/Infinity inputs.
-        if (not isinstance(amount, str) or len(amount) > 32 or
-                not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", amount)):
-            return result("INVALID_AMOUNT", "Use a positive decimal string, such as '10.00'.")
-        if not isinstance(reason, str) or not reason.strip() or len(reason) > 1000:
-            return result("INVALID_INPUT", "A reason of 1–1000 characters is required.")
+        error = validate_refund_input(amount, reason)
+        if error:
+            return error
         with connect(self.path) as db:
             db.execute("BEGIN IMMEDIATE")
             row, error = self._owned_order(db, order_id, session.customer_id)
             if error:
                 return error
-            if row["status"] not in config.refund_eligible_statuses:
-                return result("INELIGIBLE_ORDER", "Order status is not eligible for a refund.")
-            digits = CURRENCY_DIGITS[row["currency"]]
-            try:
-                value = Decimal(amount)
-                minor = value.scaleb(digits)
-                if value <= 0 or -value.as_tuple().exponent > digits:
-                    return result("INVALID_AMOUNT", f"Amount must be positive with at most {digits} decimals.")
-                minor = int(minor)
-            except (InvalidOperation, ValueError, OverflowError):
-                return result("INVALID_AMOUNT", "Invalid decimal amount.")
-            if minor > config.refund_max_minor:
-                return result("POLICY_LIMIT", "Amount exceeds the configured per-refund limit.")
+            minor, error = refund_amount(row, amount, config)
+            if error:
+                return error
             remaining = row["total_minor"] - row["refunded_minor"]
-            if minor > remaining:
-                return result("INSUFFICIENT_BALANCE", "Amount exceeds the remaining refundable balance.")
             refund_id = str(uuid4())
             db.execute("INSERT INTO refunds VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (
                 refund_id, order_id, minor, row["currency"], reason.strip(),

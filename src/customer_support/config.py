@@ -13,6 +13,8 @@ class Config:
     bedrock_region: str = "us-west-2"
     knowledge_base_region: str = "us-west-2"
     s3_region: str = "us-west-2"
+    dynamodb_region: str = "us-west-2"
+    dynamodb_table: str | None = None
     database_path: str = "data/support.sqlite3"
     interaction_record_path: str = "data/interactions.sqlite3"
     summary_read_prefix: str = "support/{customer_id}/"
@@ -33,6 +35,10 @@ class Config:
     refund_max_minor: int = 10000
 
     def __post_init__(self):
+        if self.dynamodb_table is not None and (
+            not isinstance(self.dynamodb_table, str) or not self.dynamodb_table.strip()
+        ):
+            raise ValueError("dynamodb_table must be a nonempty table name when supplied")
         for field in fields(self):
             value = getattr(self, field.name)
             if field.type is int and (type(value) is not int or value <= 0):

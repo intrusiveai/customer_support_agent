@@ -1,0 +1,28 @@
+{
+  "customers": [
+    {
+      "customer_id": "customer-alex", "name": "Alex Example",
+      "email": "customer-alex@example.com", "phone": "+1-202-555-0100",
+      "address": {"line1": "123 Example Street", "city": "Example City", "postal_code": "00000", "country": "US"},
+      "support_preferences": {"contact": "email", "language": "en"}
+    },
+    {
+      "customer_id": "customer-blair", "name": "Blair Example",
+      "email": "customer-blair@example.com", "phone": "+1-202-555-0100",
+      "address": {"line1": "123 Example Street", "city": "Example City", "postal_code": "00000", "country": "US"},
+      "support_preferences": {"contact": "email", "language": "en"}
+    }
+  ],
+  "orders": [
+    {
+      "order_id": "order-1001", "customer_id": "customer-alex", "total_minor": 7500,
+      "currency": "USD", "status": "delivered",
+      "items": [{"sku": "DEMO-HEADSET", "name": "Example headset", "quantity": 1, "unit_price_minor": 7500}]
+    },
+    {
+      "order_id": "order-2001", "customer_id": "customer-blair", "total_minor": 7500,
+      "currency": "USD", "status": "delivered",
+      "items": [{"sku": "DEMO-HEADSET", "name": "Example headset", "quantity": 1, "unit_price_minor": 7500}]
+    }
+  ]
+}

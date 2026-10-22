@@ -6,6 +6,10 @@ Implement a customer-support agent using the Python Strands Agents SDK. The agen
 
 Deliver the agent implementation, configuration examples, a reusable invocation function, a local command-line entry point, and a concise README.
 
+The optional AgentCore test deployment described below extends the original local
+storage design. SQLite remains the local default; the deployed agent MUST use
+DynamoDB for durable customer/order records, the refund ledger, and tool events.
+
 ## Architecture and service dependencies
 
 Use one Strands `Agent` with custom tools and a configurable Amazon Bedrock model. AWS clients MUST use the existing AWS credential-provider chain.
@@ -183,3 +187,31 @@ Provide a concise README covering:
 - The distinction between retrieved evidence, generated summaries, and committed transactions.
 
 Keep the application centered on one agent and these six tools.
+
+## AgentCore test deployment extension
+
+- The repository MUST include Terraform templates that provision an IAM-authenticated
+  AgentCore Runtime, one on-demand DynamoDB table, fictional sample customers/orders,
+  an S3 summary bucket, deployment/document storage, a populated Bedrock Knowledge
+  Base and its vector index, necessary execution roles, and runtime logs.
+- The deployment MUST preserve the six-tool workflow and the intentional model-selected
+  S3 bucket/prefix behavior. AWS authorization still applies.
+- The AgentCore entrypoint MUST accept a prompt and trusted customer context from an
+  IAM-authorized test operator/backend. Documentation MUST explain that a public
+  website backend must authenticate its user before supplying customer identity.
+- DynamoDB refund updates MUST atomically commit the ledger entry and balance change,
+  enforce the same local refund policy, and reject stale balance or order-data writes.
+  Tool events MUST remain available after AgentCore sessions end.
+- The repository MUST provide a repeatable Linux ARM64 Python deployment package build
+  using pinned dependencies. Terraform MUST upload the resulting artifact and supply
+  environment-specific runtime configuration without embedded credentials.
+- Sample-document ingestion MUST complete successfully as part of setup. Applying
+  Terraform again MUST NOT reset existing customer/order seed contents or refund balances.
+- A live smoke-test command MUST invoke the deployed agent and independently verify
+  retrieved evidence/citation, all six tool outcomes, an ownership denial, a committed
+  refund, and a stored/read summary. Each smoke test SHOULD use a fresh order so it
+  does not reset or exhaust prior seed data.
+- Tests MUST exercise the AgentCore HTTP adapter with the real Strands loop and simulated
+  AWS boundaries. Terraform tests MUST avoid live AWS calls and local ingestion execution.
+- Documentation MUST cover prerequisites, build/apply/invoke/test/destroy commands,
+  cloud storage layout, caller trust, costs, and the limits of offline validation.

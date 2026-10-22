@@ -1,5 +1,9 @@
 # AWS setup and live verification
 
+For an automatically provisioned AgentCore test environment, follow
+[the Terraform deployment guide](agentcore-deployment.md). This page covers the
+local CLI with manually configured AWS resources.
+
 Use an existing test AWS environment. No deployment, account discovery, bucket
 policy modification, or infrastructure provisioning is performed by this project.
 

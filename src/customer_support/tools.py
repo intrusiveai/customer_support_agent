@@ -74,7 +74,7 @@ def recorded(function):
         invocation_id = str(uuid4())
         try:
             self.records.append(self.session, invocation_id, function.__name__, "started", inputs)
-        except (sqlite3.Error, OSError):
+        except (sqlite3.Error, OSError, ClientError, BotoCoreError):
             return result("RECORDING_FAILED", "Could not retain input; tool was not executed.",
                           invocation_id=invocation_id)
         token = _invocation.set(invocation_id)
@@ -87,7 +87,7 @@ def recorded(function):
                 else:
                     output = function(self, *args, **kwargs)
             except (ClientError, BotoCoreError, OSError) as exc:
-                output = aws_failure(exc, write=function.__name__ == "write_interaction_summary")
+                output = aws_failure(exc, write=function.__name__ in {"write_interaction_summary", "issue_refund"})
             except sqlite3.Error:
                 write = function.__name__ == "issue_refund"
                 output = result("OUTCOME_UNCERTAIN" if write else "STORAGE_FAILURE",
@@ -96,7 +96,7 @@ def recorded(function):
             output["invocation_id"] = invocation_id
             try:
                 self.records.append(self.session, invocation_id, function.__name__, "completed", output)
-            except (sqlite3.Error, OSError):
+            except (sqlite3.Error, OSError, ClientError, BotoCoreError):
                 # Preserve the actual outcome: an audit failure does not undo a committed write.
                 output["recording_error"] = "RECORDING_FAILED"
                 output["recording_message"] = "Input retained, but outcome could not be retained."
@@ -131,13 +131,21 @@ def bounded_metadata(value: dict) -> tuple[dict, bool]:
 
 
 class SupportTools:
-    def __init__(self, config: Config, session: Session, *, kb_client, s3_client):
+    def __init__(self, config: Config, session: Session, *, kb_client, s3_client, dynamodb_client=None):
         self.config = config
         self.session = session
         self.kb = kb_client
         self.s3 = s3_client
-        self.store = Store(config.database_path)
-        self.records = InteractionRecords(config.interaction_record_path)
+        if config.dynamodb_table:
+            from .dynamodb import DynamoInteractionRecords, DynamoStore
+
+            if dynamodb_client is None:
+                raise ValueError("DynamoDB configuration requires a DynamoDB client")
+            self.store = DynamoStore(dynamodb_client, config.dynamodb_table)
+            self.records = DynamoInteractionRecords(dynamodb_client, config.dynamodb_table)
+        else:
+            self.store = Store(config.database_path)
+            self.records = InteractionRecords(config.interaction_record_path)
         self.calls = 0
 
     @recorded

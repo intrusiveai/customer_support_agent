@@ -11,11 +11,14 @@ requires-python = ">=3.11"
 license = "AGPL-3.0-only"
 dependencies = ["strands-agents==1.62.0", "boto3==1.43.117"]
 
+[project.optional-dependencies]
+agentcore = ["bedrock-agentcore==1.24.2"]
+
 [project.scripts]
 support-agent = "customer_support.cli:main"
 
 [dependency-groups]
-dev = ["pytest==9.1.1"]
+dev = ["pytest==9.1.1", "moto[dynamodb,s3]==5.2.4"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/customer_support"]

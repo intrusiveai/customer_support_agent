@@ -24,8 +24,10 @@ def aws_config(config: Config) -> AWSConfig:
 def instructions(config: Config, session: Session) -> str:
     locations = {
         "bucket": config.summary_bucket,
-        "read_prefix": config.summary_read_prefix.replace("{customer_id}", session.customer_id),
-        "write_prefix": config.summary_write_prefix.replace("{customer_id}", session.customer_id),
+        "read_prefix": config.summary_read_prefix.replace("{customer_id}", session.customer_id).replace(
+            "{interaction_id}", session.interaction_id),
+        "write_prefix": config.summary_write_prefix.replace("{customer_id}", session.customer_id).replace(
+            "{interaction_id}", session.interaction_id),
     }
     return f"""You are a customer-support TEST agent. All refunds are simulated ledger entries.
 Trusted active customer: {session.customer_id}. Interaction: {session.interaction_id}.
@@ -58,7 +60,8 @@ confirmed absence of a write. Do not claim a successful save without a successfu
 """
 
 
-def build_agent(config: Config, session: Session, *, model=None, kb_client=None, s3_client=None) -> Agent:
+def build_agent(config: Config, session: Session, *, model=None, kb_client=None, s3_client=None,
+                dynamodb_client=None) -> Agent:
     """Build isolated conversation state. Inject clients/model for credential-free tests.
 
     The caller must authenticate the customer before constructing Session. Never reuse
@@ -71,14 +74,18 @@ def build_agent(config: Config, session: Session, *, model=None, kb_client=None,
             boto_client_config=aws_config(config),
             max_tokens=config.model_max_tokens,
         )
-    if kb_client is None or s3_client is None:
+    if kb_client is None or s3_client is None or (config.dynamodb_table and dynamodb_client is None):
         aws = boto3.Session()
         if kb_client is None:
             kb_client = aws.client("bedrock-agent-runtime", region_name=config.knowledge_base_region,
                                    config=aws_config(config))
         if s3_client is None:
             s3_client = aws.client("s3", region_name=config.s3_region, config=aws_config(config))
-    support_tools = SupportTools(config, session, kb_client=kb_client, s3_client=s3_client)
+        if config.dynamodb_table and dynamodb_client is None:
+            dynamodb_client = aws.client("dynamodb", region_name=config.dynamodb_region,
+                                         config=aws_config(config))
+    support_tools = SupportTools(config, session, kb_client=kb_client, s3_client=s3_client,
+                                 dynamodb_client=dynamodb_client)
 
     def start_turn(event: BeforeInvocationEvent):
         support_tools.calls = 0

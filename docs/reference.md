@@ -5,6 +5,10 @@ The application is separated into configuration, agent construction, tools, stor
 and CLI modules under `src/customer_support`. It has one Strands agent, sequential
 tool execution, and no server or background service.
 
+The optional [AgentCore deployment](agentcore-deployment.md) adds an HTTP entrypoint
+adapter and a DynamoDB storage backend. Terraform provisions its AWS resources.
+Local CLI behavior and SQLite remain available.
+
 ## Tool results and trust
 
 Each independently callable tool returns a JSON-compatible dictionary:
@@ -42,6 +46,7 @@ was returned. Check `code` and per-item results. Application codes are:
 | `LIMIT_EXCEEDED` | Call, byte, size, or traversal-time budget exhausted |
 | `SERVICE_FAILURE`, `STORAGE_FAILURE` | AWS/local read failed |
 | `OUTCOME_UNCERTAIN` | A write failed without a safely confirmed outcome |
+| `CONCURRENT_UPDATE`, `TRANSACTION_REJECTED` | DynamoDB rejected a refund transaction atomically, or an order could not be read consistently |
 | `RECORDING_FAILED` | Input could not be retained, so operation was not attempted |
 
 AWS failures include `aws_error_code` and `aws_request_id` where available; raw
@@ -106,6 +111,7 @@ against the TOML file's directory.
 | `model_id`, `knowledge_base_id`, `summary_bucket` | Required environment-specific values |
 | `bedrock_region`, `knowledge_base_region`, `s3_region` | `us-west-2`, independently configurable |
 | `database_path`, `interaction_record_path` | `data/support.sqlite3`, `data/interactions.sqlite3` |
+| `dynamodb_table`, `dynamodb_region` | Optional table name selects DynamoDB for domain records and tool events; region defaults to `us-west-2` |
 | `summary_read_prefix`, `summary_write_prefix` | `support/{customer_id}/`; system-prompt guidance only |
 | `retrieval_results`, `retrieval_text_chars` | 5 passages (maximum 100), 12,000 combined passage characters |
 | `s3_list_limit` | 10 objects in one page (maximum 1,000) |

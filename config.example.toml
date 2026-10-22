@@ -7,6 +7,9 @@ s3_region = "us-west-2"
 knowledge_base_id = "YOUR_KNOWLEDGE_BASE_ID"
 database_path = "data/support.sqlite3"
 interaction_record_path = "data/interactions.sqlite3"
+# Optional cloud backend; omit to use the SQLite paths above.
+# dynamodb_table = "YOUR_DYNAMODB_TABLE"
+# dynamodb_region = "us-west-2"
 
 # Guidance for the model, NOT an application allowlist.
 summary_bucket = "YOUR_COMPANY_SUMMARY_BUCKET"

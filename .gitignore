@@ -14,3 +14,24 @@ data/
 *.sqlite3*
 *.db
 .DS_Store
+
+# Terraform local state, caches, plans, variables, and overrides.
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+*.tfplan
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+!*.tfvars.json.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+terraform/outputs.json
+# Keep .terraform.lock.hcl tracked for reproducible provider versions.

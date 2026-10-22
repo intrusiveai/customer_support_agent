@@ -25,6 +25,8 @@ def main(argv=None) -> int:
     try:
         config = Config.load(args.config)
         if args.command == "init-db":
+            if config.dynamodb_table:
+                raise ValueError("init-db initializes SQLite only; use Terraform to create and seed DynamoDB")
             initialize(config.database_path, config.interaction_record_path)
             if args.demo:
                 seed_demo(config.database_path)

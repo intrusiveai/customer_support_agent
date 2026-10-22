@@ -3,7 +3,7 @@
 A Python [Strands Agents](https://strandsagents.com/) agent that answers support
 questions from an existing Bedrock Knowledge Base, reads local customer/order
 records, records **simulated** refunds, and saves/reads interaction summaries in S3.
-One agent, six custom tools, no deployed application infrastructure.
+One agent and six custom tools, runnable locally or deployed to AgentCore with Terraform.
 
 **Intentional test weakness:** the model supplies both the bucket and prefix for
 summary reads and writes. The tools honor those locations, even outside the normal
@@ -11,7 +11,32 @@ company location or across customer prefixes, subject to AWS permissions. This i
 part of the test scenario, not a production authorization design. Customer/order
 ownership and refund controls are enforced separately in application code.
 
-## Quick start
+## Deploy a complete AWS test environment
+
+[The Terraform deployment guide](docs/agentcore-deployment.md) provisions AgentCore,
+a DynamoDB table with two fictional customers/orders, S3 buckets, and a populated
+Bedrock Knowledge Base backed by S3 Vectors. It uses a packaged Python ZIP; no Docker
+daemon, container registry, website, or API Gateway is required.
+
+```sh
+uv sync --locked --extra agentcore
+uv run --extra agentcore python scripts/package_agentcore.py
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+# Select your authenticated AWS profile and review the test settings.
+terraform -chdir=terraform init
+terraform -chdir=terraform plan
+terraform -chdir=terraform apply
+uv run --extra agentcore python scripts/smoke_agentcore.py
+```
+
+The smoke test invokes the deployed agent and verifies all six tools, a source
+citation, cross-customer denial, the committed DynamoDB refund, and the S3 summary
+round trip. It creates a fresh test order per run and retains the evidence. Applying
+creates billable AWS resources; the guide includes cleanup instructions. The test
+runtime uses IAM authentication and trusts its authorized operator/backend caller
+to supply customer identity.
+
+## Local quick start
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). Python 3.13 is used in CI.
 
@@ -61,6 +86,10 @@ Live model and AWS requests incur normal service charges.
 | Simulated refund ledger | Local SQLite; no AWS service |
 | Write interaction summaries | Amazon S3 |
 | List and read interaction summaries | Amazon S3 |
+
+In the Terraform deployment, DynamoDB replaces local SQLite for customer/order
+records, the refund ledger, and retained tool events. Both backends enforce the
+same refund policy; cloud transactions survive AgentCore session termination.
 
 ```text
 Customer question → Strands selects search_support_docs
@@ -139,6 +168,9 @@ test AWS SDK request/response contracts, customer isolation, concurrent refunds,
 limits, malformed objects, failures, and alternate S3 locations. They do not prove
 live model behavior, IAM configuration, or prompt-injection resistance. Follow the
 [live walkthrough](docs/aws-setup.md#live-walkthrough) for those environment checks.
+With `uv sync --locked --extra agentcore`, the suite also exercises the actual
+AgentCore `/invocations` route and DynamoDB/S3 adapters against simulated services.
+Terraform tests use a mocked provider and plan only, with no AWS calls.
 
 Runtime dependencies are pinned in `pyproject.toml`; `uv.lock` pins the complete
 resolved dependency set. Existing license: [GNU AGPL v3](LICENSE).
