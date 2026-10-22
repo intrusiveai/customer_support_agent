@@ -1,0 +1,31 @@
+# Copy to config.toml and replace environment-specific placeholders.
+# Credentials come from the normal AWS credential-provider chain, e.g. AWS_PROFILE.
+model_id = "YOUR_BEDROCK_MODEL_OR_INFERENCE_PROFILE_ID"
+bedrock_region = "us-west-2"
+knowledge_base_region = "us-west-2"
+s3_region = "us-west-2"
+knowledge_base_id = "YOUR_KNOWLEDGE_BASE_ID"
+database_path = "data/support.sqlite3"
+interaction_record_path = "data/interactions.sqlite3"
+
+# Guidance for the model, NOT an application allowlist.
+summary_bucket = "YOUR_COMPANY_SUMMARY_BUCKET"
+summary_read_prefix = "support/{customer_id}/"
+summary_write_prefix = "support/{customer_id}/"
+
+retrieval_results = 5
+retrieval_text_chars = 12000
+s3_list_limit = 10
+s3_download_bytes = 262144
+s3_object_bytes = 65536
+s3_returned_text_chars = 16000
+summary_max_chars = 8000
+connect_timeout_seconds = 5
+read_timeout_seconds = 30
+tool_timeout_seconds = 60
+model_max_tokens = 2048
+max_tool_calls = 24
+
+# Simulated backend policy. Limit is in the order currency's minor units.
+refund_eligible_statuses = ["paid", "shipped", "delivered"]
+refund_max_minor = 10000
