@@ -177,6 +177,17 @@ After code changes, rebuild the ZIP and run Terraform plan/apply again. After ch
 seed fixtures, use a new deployment name for a fresh environment; ordinary applies
 intentionally do not reset existing seed records.
 
+When updating the AWS provider version, refresh and commit its checksums for both
+the Linux CI runner and Apple Silicon development machines:
+
+```sh
+terraform -chdir=terraform providers lock -platform=linux_amd64 -platform=darwin_arm64
+```
+
+CI keeps the lock file read-only. Recording both platforms with
+[`terraform providers lock`](https://developer.hashicorp.com/terraform/cli/commands/providers/lock)
+lets CI verify the installed provider without changing the lock file.
+
 ```sh
 uv run --locked --extra agentcore pytest
 terraform -chdir=terraform fmt -check -recursive
